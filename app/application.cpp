@@ -3,6 +3,7 @@
 #include "pcf8574_esp.h"
 #include "Data/Stream/TemplateFlashMemoryStream.h"
 #include <SmingCore/Network/Http/Websocket/WebsocketResource.h>
+#include "CUserData.h"
 
 #define SDA_PIN 5
 #define SCL_PIN 4
@@ -11,7 +12,6 @@
 TwoWire testWire;
 HttpServer server;
 
-HttpServer server;
 int totalActiveSockets = 0;
 
 Timer procTimer;
@@ -22,7 +22,15 @@ volatile uint8_t timer = 0;
 
 PCF857x pcf8574(0x20, &testWire, true);
 
+CUserData users("", "");
+
 void onIndex(HttpRequest& request, HttpResponse& response)
+{
+	TemplateFileStream* tmpl = new TemplateFileStream("index.html");
+	response.sendTemplate(tmpl); // will be automatically deleted
+}
+
+void onStatus(HttpRequest& request, HttpResponse& response)
 {
 	//TemplateFileStream* tmpl = new TemplateFileStream("index.html");
 	//auto& vars = tmpl->variables();
@@ -38,6 +46,14 @@ void onIndex(HttpRequest& request, HttpResponse& response)
 	response.sendDataStream(stream, MIME_JSON);
 }
 
+void broadcastPins() 
+{
+	String message = String(pcf8574.read16());
+	for(int i = 0; i < users.activeWebSockets.count(); i++) {
+		(*(users.activeWebSockets[i])).broadcast(message.c_str(), message.length());
+	}
+}
+
 void onSwitchOn(HttpRequest& request, HttpResponse& response)
 {
 	String text = request.getQueryParameter("pin");
@@ -49,6 +65,7 @@ void onSwitchOn(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
+	broadcastPins();
 }
 
 void onSwitchOff(HttpRequest& request, HttpResponse& response)
@@ -64,6 +81,7 @@ void onSwitchOff(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
+	broadcastPins();
 }
 
 void onToggle(HttpRequest& request, HttpResponse& response)
@@ -83,16 +101,19 @@ void onToggle(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
+	broadcastPins();
 }
 
 void IRAM_ATTR PCFInterrupt()
 {  
 	Serial.println(pcf8574.read16(), HEX);
+	broadcastPins();
 }
 
 void wsConnected(WebsocketConnection& socket)
 {
 	totalActiveSockets++;
+	users.addSession(socket);
 }
 
 void wsMessageReceived(WebsocketConnection& socket, const String& message)
@@ -110,10 +131,10 @@ void wsMessageReceived(WebsocketConnection& socket, const String& message)
 	socket.sendString(response);
 
 	//Normally you would use dynamic cast but just be careful not to convert to wrong object type!
-	CUserData* user = (CUserData*)socket.getUserData();
-	if(user) {
-		user->printMessage(socket, message);
-	}
+	// CUserData* user = (CUserData*)socket.getUserData();
+	// if(user) {
+	// 	user->printMessage(socket, message);
+	// }
 }
 
 void wsBinaryReceived(WebsocketConnection& socket, uint8_t* data, size_t size)
@@ -125,7 +146,7 @@ void wsDisconnected(WebsocketConnection& socket)
 {
 	totalActiveSockets--;
 
-	//Normally you would use dynamic cast but just be careful not to convert to wrong object type!
+	// Normally you would use dynamic cast but just be careful not to convert to wrong object type!
 	CUserData* user = (CUserData*)socket.getUserData();
 	if(user) {
 		user->removeSession(socket);
@@ -136,6 +157,21 @@ void wsDisconnected(WebsocketConnection& socket)
 	socket.broadcast(message.c_str(), message.length());
 }
 
+
+void onFile(HttpRequest& request, HttpResponse& response)
+{
+	String file = request.uri.Path;
+	if(file[0] == '/')
+		file = file.substring(1);
+
+	if(file[0] == '.')
+		response.code = HTTP_STATUS_FORBIDDEN;
+	else {
+		response.setCache(86400, true); // It's important to use cache for better performance.
+		response.sendFile(file);
+	}
+}
+
 void startWebServer()
 {
 	server.listen(80);
@@ -143,7 +179,8 @@ void startWebServer()
 	server.addPath("/on", onSwitchOn);
 	server.addPath("/off", onSwitchOff);
 	server.addPath("/toggle", onToggle);
-	server.setDefaultHandler(onIndex);
+	server.addPath("/status", onStatus);
+	server.setDefaultHandler(onFile);
 }
 
 void startServers()

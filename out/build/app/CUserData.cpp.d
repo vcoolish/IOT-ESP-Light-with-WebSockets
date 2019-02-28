@@ -1,4 +1,5 @@
-app/application.o: app/application.cpp include/user_config.h \
+app/CUserData.o: app/CUserData.cpp include/CUserData.h \
+ include/user_config.h \
  /opt/sming/Sming/system/include/espinc/c_types_compatible.h \
  /opt/sming/Sming/system/include/esp_systemapi.h \
  /opt/esp-open-sdk/sdk/include/ets_sys.h \
@@ -249,18 +250,4 @@ app/application.o: app/application.cpp include/user_config.h \
  /opt/sming/Sming/SmingCore/../Services/FATFS/integer.h \
  /opt/sming/Sming/SmingCore/../Services/FATFS/ffconf.h \
  /opt/sming/Sming/SmingCore/../Services/Yeelight/YeelightBulb.h \
- /opt/sming/Sming/include/../Wiring/WVector.h app/pcf8574_esp.h \
- /opt/sming/Sming/Wiring/Arduino.h \
- /opt/sming/Sming/Wiring/../include/user_config.h \
- /opt/sming/Sming/Wiring/../Wiring/WiringFrameworkDependencies.h \
- /opt/sming/Sming/Wiring/../SmingCore/SmingCore.h \
- /opt/sming/Sming/Wiring/../SmingCore/ArduinoCompat.h \
- /opt/sming/Sming/Wiring/../SmingCore/SmingCore.h \
- /opt/sming/Sming/SmingCore/Wire.h \
- /opt/sming/Sming/SmingCore/Data/Stream/TemplateFlashMemoryStream.h \
- /opt/sming/Sming/SmingCore/Data/Stream/FlashMemoryStream.h \
- /opt/sming/Sming/SmingCore/Network/Http/Websocket/WebsocketResource.h \
- /opt/sming/Sming/SmingCore/Network/Http/Websocket/../HttpServerConnection.h \
- /opt/sming/Sming/SmingCore/Network/Http/Websocket/../HttpResource.h \
- /opt/sming/Sming/SmingCore/Network/Http/Websocket/WebsocketConnection.h \
- include/CUserData.h
+ /opt/sming/Sming/include/../Wiring/WVector.h
