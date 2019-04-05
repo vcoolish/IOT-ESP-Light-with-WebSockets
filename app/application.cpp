@@ -15,6 +15,8 @@ HttpServer server;
 int totalActiveSockets = 0;
 
 Timer procTimer;
+Timer broadcastTimer;
+bool isCounting = false;
 
 volatile uint8_t state = 0;
 volatile uint8_t timerFlag = 0;
@@ -152,6 +154,9 @@ void broadcastPins()
 	if(users.activeWebSockets.count() > 0) {
 		(*(users.activeWebSockets[0])).broadcast(msg.c_str(), msg.length());
 	}
+	isCounting = false;
+	broadcastTimer.stop();
+	Serial.println("broadcasted");
 }
 
 void onSwitchOnRelay(HttpRequest& request, HttpResponse& response)
@@ -165,7 +170,6 @@ void onSwitchOnRelay(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
-	broadcastPins();
 }
 
 void onSwitchOffRelay(HttpRequest& request, HttpResponse& response)
@@ -181,7 +185,6 @@ void onSwitchOffRelay(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
-	broadcastPins();
 }
 
 void onSwitchOn(HttpRequest& request, HttpResponse& response)
@@ -229,7 +232,6 @@ void onSwitchOn(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
-	broadcastPins();
 }
 
 void onSwitchOff(HttpRequest& request, HttpResponse& response)
@@ -277,7 +279,6 @@ void onSwitchOff(HttpRequest& request, HttpResponse& response)
 	
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
-	broadcastPins();
 }
 
 uint8_t get_status_on_line(uint8_t number) {
@@ -314,13 +315,17 @@ void onToggle(HttpRequest& request, HttpResponse& response)
 		
 	response.setAllowCrossDomainOrigin("*");
 	response.sendDataStream(stream, MIME_JSON);
-	broadcastPins();
 }
 
 void IRAM_ATTR PCFInterrupt()
 {  
+	// procTimer.initializeMs(500, broadcastPins).start();
 	Serial.println(pcf8574.read16(), HEX);
-	broadcastPins();
+	Serial.println("interrupted");
+	if(!isCounting){
+		isCounting = true;
+		broadcastTimer.initializeMs(1000, broadcastPins).start();
+	}
 }
 
 void wsConnected(WebsocketConnection& socket)
